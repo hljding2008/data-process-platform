@@ -1,12 +1,10 @@
 package cn.o2o.wonhigh.data.process.platform.job.execution
 
-abstract class ExecutionPlanNode(parentNode: ExecutionPlanNode) {
-  this(parentNode: ExecutionPlanNode){
-    print(11111)
-  }
-  def execute
+import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 
-  def getParent = parentNode
+trait ExecutionPlanNode {
 
-  def getChildren: List[ExecutionPlanNode]
+//  def execute(env: StreamExecutionEnvironment)
+//  def getParent
+  def getChildren: Seq[ExecutionPlanNode]
 }
