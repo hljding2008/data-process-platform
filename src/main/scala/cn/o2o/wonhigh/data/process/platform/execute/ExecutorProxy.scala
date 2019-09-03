@@ -6,5 +6,5 @@ trait ExecutorProxy {
   def deployJob(job: Job)
   def getJobStatus(jobId: String): JobStatus
   def listJobStatus(): List[JobStatus]
-  def killJob(jobId: String)
+  def killJob(jobId: String,mode: String = "cancel")
 }

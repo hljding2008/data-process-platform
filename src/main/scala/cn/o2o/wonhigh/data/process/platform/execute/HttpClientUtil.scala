@@ -4,5 +4,5 @@ import com.github.kevinsawicki.http.HttpRequest
 
 object HttpClientUtil {
   def get(url: String): String = HttpRequest.get(url).body()
-
+  def post(url: String): String = HttpRequest.post(url).body()
 }
