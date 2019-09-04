@@ -13,5 +13,6 @@ class InMemoryJobStorage extends JobStorage {
 
   override def listJob(): List[Job] = jobMap.values.toList
 
-  override def saveJob(job: Job): Unit = jobMap.put(job.jobId,job)
+  override def saveJob(job: Job): Unit = {jobMap.put(job.jobId,job)
+    print(jobMap.size)}
 }

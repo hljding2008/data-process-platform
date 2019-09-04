@@ -72,14 +72,14 @@ object FlinkExecutorProxy {
 
   def main(args: Array[String]): Unit = {
     //        new FlinkExecutorProxy().listJobStatus
-    val job = Job("1", "name_1",
-      "CREATE TABLE tbl1 (a bigint, h varchar, msg VARCHAR ) " +
-        "PARTITIONED BY (a, h)  " +
-        "with ('connector.type' = 'kafka','connector.version' = '0.10','connector.topic' = 'event_topic','connector.startup-mode' = 'earliest-offset','connector.properties.0.key' = 'bootstrap.servers','connector.properties.0.value' = 'club-kafka-qa:9092','update-mode' = 'append', 'format.type' = 'json','format.derive-schema' = 'true');" +
-        "CREATE TABLE tbl2 (a bigint, h varchar, msg VARCHAR ) " +
-        "PARTITIONED BY (a, h)  " +
-        "with ('connector.type' = 'kafka','connector.version' = '0.10','connector.topic' = 'sink_topic','connector.startup-mode' = 'earliest-offset','connector.properties.0.key' = 'bootstrap.servers','connector.properties.0.value' = 'club-kafka-qa:9092','update-mode' = 'append', 'format.type' = 'json','format.derive-schema' = 'true');" +
-        "insert into tbl2 select * from tbl1")
+//    val job = new Job("1", "name_1",
+//      "CREATE TABLE tbl1 (a bigint, h varchar, msg VARCHAR ) " +
+//        "PARTITIONED BY (a, h)  " +
+//        "with ('connector.type' = 'kafka','connector.version' = '0.10','connector.topic' = 'event_topic','connector.startup-mode' = 'earliest-offset','connector.properties.0.key' = 'bootstrap.servers','connector.properties.0.value' = 'club-kafka-qa:9092','update-mode' = 'append', 'format.type' = 'json','format.derive-schema' = 'true');" +
+//        "CREATE TABLE tbl2 (a bigint, h varchar, msg VARCHAR ) " +
+//        "PARTITIONED BY (a, h)  " +
+//        "with ('connector.type' = 'kafka','connector.version' = '0.10','connector.topic' = 'sink_topic','connector.startup-mode' = 'earliest-offset','connector.properties.0.key' = 'bootstrap.servers','connector.properties.0.value' = 'club-kafka-qa:9092','update-mode' = 'append', 'format.type' = 'json','format.derive-schema' = 'true');" +
+//        "insert into tbl2 select * from tbl1")
 //        new FlinkExecutorProxy().deployJob(job)
 //        new FlinkExecutorProxy().getJobStatus("9b2b019c258d11c9193066e26a094473")
     new FlinkExecutorProxy().killJob("f2868b525f41b00a04c156eb902c9b36")

@@ -1,52 +1,84 @@
 package cn.o2o.wonhigh.data.process.platform
 
 import java.io.IOException
-import java.net.URI
-import java.util.StringJoiner
 
-import cn.o2o.wonhigh.data.process.paltform.api.ClusterApi
-import com.sun.jersey.api.container.grizzly2.GrizzlyServerFactory
-import com.sun.jersey.api.core.PackagesResourceConfig
-import com.sun.jersey.spi.container.servlet.ServletContainer
-import org.glassfish.grizzly.http.server.{HttpHandler, HttpServer, Request, Response}
-import org.glassfish.grizzly.http.util.HttpStatus
-import org.glassfish.grizzly.servlet.{ServletRegistration, WebappContext}
+import akka.actor.ActorSystem
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.Http.ServerBinding
+import akka.http.scaladsl.model._
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.{Directive1, Route}
+import akka.http.scaladsl.unmarshalling.FromRequestUnmarshaller
+import akka.stream.ActorMaterializer
+import cn.o2o.wonhigh.data.process.platform.job.Job
+import spray.json._
+import cn.o2o.wonhigh.data.process.platform.job.JobJsonSupport._
 
-object WebServer {
-  val BASE_PATH = "/ws/v1"
-  private val PACKAGES = Array[String](classOf[ClusterApi].getPackage.getName, "com.fasterxml.jackson.jaxrs.json")
-}
+import scala.concurrent.{ExecutionContextExecutor, Future}
 
-class WebServer @throws[IOException]
-(val endpoint: URI) extends AutoCloseable {
-  final private val server: HttpServer = GrizzlyServerFactory.createHttpServer(endpoint, new HttpHandler() {
-    @throws[Exception]
-    override def service(rqst: Request, rspns: Response): Unit = {
-      rspns.setStatus(HttpStatus.NOT_FOUND_404.getStatusCode, "Not found")
-      rspns.getWriter.write("404: not found")
+class WebServer(val host: String, val port: Int, val ctx: PlatformContext = null) extends AutoCloseable {
+  implicit val system: ActorSystem = ActorSystem("api-server")
+  implicit val materializer: ActorMaterializer = ActorMaterializer()
+  implicit val executionContext: ExecutionContextExecutor = system.dispatcher
+
+  val jobsRoute: Route = path("jobs") {
+    get {
+      val result = ctx.getJobManager.listJobs().toJson.toString()
+      complete(HttpEntity(ContentTypes.`application/json`,result))
     }
-  })
-  val context = new WebappContext("WebappContext", WebServer.BASE_PATH)
-  val registration: ServletRegistration = context.addServlet("ServletContainer", classOf[ServletContainer])
-  registration.setInitParameter(ServletContainer.RESOURCE_CONFIG_CLASS, classOf[PackagesResourceConfig].getName)
-  val sj = new StringJoiner(",")
-  for (s <- WebServer.PACKAGES) {
-    sj.add(s)
+  } ~ path("jobs") {
+    post {
+      entity(as[Job]) { job =>
+//        val job = new Gson().fromJson(jobStr, classOf[Job])
+        ctx.getJobManager.createJob(job)
+        WebServer.completeOk
+      }
+    }
+  } ~ path("jobs" / Segment) { jobID =>
+    get {
+      ctx.getJobManager.getJob(jobID) match {
+        case Some(job: Job) => complete(HttpEntity(ContentTypes.`application/json`, job.toJson.toString))
+        case None => WebServer.completeOk
+      }
+    } ~
+      delete {
+        ctx.getJobManager.killJob(jobID)
+        complete(HttpEntity(ContentTypes.`application/json`, s"remove job: $jobID"))
+      }
   }
-  registration.setInitParameter(PackagesResourceConfig.PROPERTY_PACKAGES, sj.toString)
-  registration.addMapping(WebServer.BASE_PATH)
-  context.deploy(server)
+  val routes: Route =
+    pathPrefix(WebServer.BASE_PATH) {
+      jobsRoute
+    } ~ path("")(getFromResource("public/index.html"))
+
+  var bindingFuture: Future[ServerBinding] = _
 
   @throws[IOException]
   def start(): Unit = {
-    server.start()
+    bindingFuture = Http().bindAndHandle(routes, host, port)
   }
 
   @throws[Exception]
   override def close(): Unit = {
-    server.stop()
+    bindingFuture.flatMap(_.unbind()).onComplete(_ => system.terminate())
     println("api server closed...")
   }
 
-  def port: Int = server.getListeners.iterator.next.getPort
+}
+
+object WebServer {
+  val BASE_PATH = "v1"
+
+  def completeOk: Route = complete(HttpEntity.Empty)
+
+  def postEntity[T](um: FromRequestUnmarshaller[T]): Directive1[T] = post & entity(um)
+
+  def main(args: Array[String]): Unit = {
+//    val job: Job = "{\"jobName\":\"1\",\"jobId\":\"2\",\"sql\":\"3\"}"
+//    print(job.jobId)
+    //    val server = new WebServer("localhost", 8080)
+    //    server.start()
+    //    println(new Gson().toJson(List[Job](new Job("1", "2", "3"))).toString())
+  }
+
 }

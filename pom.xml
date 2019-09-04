@@ -131,6 +131,18 @@ under the License.
 			<scope>runtime</scope>
 		</dependency>
 
+		<dependency>
+			<groupId>com.alibaba</groupId>
+			<artifactId>fastjson</artifactId>
+			<version>1.2.58</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.google.code.gson</groupId>
+			<artifactId>gson</artifactId>
+			<version>2.8.5</version>
+		</dependency>
+
         <dependency>
             <groupId>com.github.kevinsawicki</groupId>
             <artifactId>http-request</artifactId>
@@ -138,30 +150,11 @@ under the License.
         </dependency>
 
 		<dependency>
-			<groupId>com.sun.jersey</groupId>
-			<artifactId>jersey-server</artifactId>
-			<version>${jersey.version}</version>
+			<groupId>com.typesafe.akka</groupId>
+			<artifactId>akka-http-spray-json_2.11</artifactId>
+			<version>10.1.9</version>
 		</dependency>
-		<dependency>
-			<groupId>com.sun.jersey</groupId>
-			<artifactId>jersey-grizzly2</artifactId>
-			<version>${jersey.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>com.sun.jersey</groupId>
-			<artifactId>jersey-grizzly2-servlet</artifactId>
-			<version>${jersey.version}</version>
-		</dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.jaxrs</groupId>
-            <artifactId>jackson-jaxrs-json-provider</artifactId>
-            <version>2.7.4</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.dataformat</groupId>
-            <artifactId>jackson-dataformat-yaml</artifactId>
-            <version>2.7.4</version>
-        </dependency>
+
 		<!--dependency>
 			<groupId>org.mockito</groupId>
 			<artifactId>mockito-core</artifactId>
@@ -174,6 +167,17 @@ under the License.
 		</dependency>
 
         <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-http_${scala.binary.version}</artifactId>
+            <version>10.1.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-stream_${scala.binary.version}</artifactId>
+            <version>2.5.12</version>
+        </dependency>
+
+        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>4.12</version>
@@ -182,33 +186,6 @@ under the License.
 
 	<build>
 		<plugins>
-			<plugin>
-				<groupId>io.swagger</groupId>
-				<artifactId>swagger-codegen-maven-plugin</artifactId>
-				<version>2.2.3</version>
-				<executions>
-					<execution>
-						<goals>
-							<goal>generate</goal>
-						</goals>
-						<configuration>
-							<inputSpec>${project.basedir}/src/main/resources/data-process-platform-api.yaml</inputSpec>
-							<language>jaxrs</language>
-							<output>target/swagger</output>
-							<modelPackage>cn.o2o.wonhigh.data.process.paltform.api</modelPackage>
-							<apiPackage>cn.o2o.wonhigh.data.process.paltform.api</apiPackage>
-							<invokerPackage>cn.o2o.wonhigh.data.process.paltform.api</invokerPackage>
-							<ignoreFileOverride>${project.basedir}/src/main/resources/.swagger-codegen-ignore</ignoreFileOverride>
-							<supportingFilesToGenerate>NotFoundException.java,ApiException.java,ApiResponseMessage.java</supportingFilesToGenerate>
-							<configOptions>
-								<dateLibrary>java8</dateLibrary>
-								<library>jersey1</library>
-							</configOptions>
-							<addCompileSourceRoot>false</addCompileSourceRoot>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
 			<!-- We use the maven-shade plugin to create a fat jar that contains all necessary dependencies. -->
 			<!-- Change the value of <mainClass>...</mainClass> if your program entry point changes. -->
 			<plugin>

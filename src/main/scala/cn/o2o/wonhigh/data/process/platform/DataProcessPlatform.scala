@@ -1,12 +1,11 @@
 package cn.o2o.wonhigh.data.process.platform
 
-import java.net.URI
-
 object DataProcessPlatform {
   def main(args: Array[String]): Unit = {
-    PlatformContext.INSTANCE.initialize.start
+    val ctx = PlatformContext.INSTANCE.initialize
+    ctx.start
     try {
-      val server = new WebServer(URI.create("http://localhost:0"))
+      val server = new WebServer("localhost",8080,ctx)
       try {
         server.start()
         Thread.currentThread.join()

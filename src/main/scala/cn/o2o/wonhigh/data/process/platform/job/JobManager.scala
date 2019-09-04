@@ -5,14 +5,16 @@ import cn.o2o.wonhigh.data.process.platform.store.JobStorage
 
 class JobManager(jobStorage: JobStorage, jobExecutor: ExecutorProxy) {
 
-  def createJob(): Unit = {
-    val job = JobFactory.getJob()
+  def createJob(job:Job): Unit = {
     jobStorage.saveJob(job);
   }
 
-  def listJobs(): Unit = {
-//    val job = JobFactory.getJob()
-//    jobStorage.saveJob(job);
+  def getJob(jobID: String): Option[Job] = {
+    jobStorage.getJob(jobID)
+  }
+
+  def listJobs(): List[Job] = {
+    jobStorage.listJob()
   }
 
   def listJobInstances(): Unit = {
