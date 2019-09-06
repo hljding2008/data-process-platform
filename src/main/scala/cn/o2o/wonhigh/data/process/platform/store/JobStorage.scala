@@ -7,6 +7,8 @@ trait JobStorage {
 
   def listJob(): List[Job]
 
+  def listJobNeedToChangeState(): List[Job]
+
   def saveJob(job: Job)
 
 }

@@ -13,6 +13,9 @@ class InMemoryJobStorage extends JobStorage {
 
   override def listJob(): List[Job] = jobMap.values.toList
 
-  override def saveJob(job: Job): Unit = {jobMap.put(job.jobId,job)
-    print(jobMap.size)}
+  override def listJobNeedToChangeState():  List[Job] = {
+    listJob().filter(job=>job.actualState!=job.desiredState)
+  }
+
+  override def saveJob(job: Job): Unit = jobMap.put(job.jobId,job)
 }

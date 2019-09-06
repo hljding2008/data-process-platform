@@ -5,14 +5,16 @@ import java.io.IOException
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.ServerBinding
+import akka.http.scaladsl.model.ContentType.WithFixedCharset
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.{Directive1, Route}
+import akka.http.scaladsl.server.{Directive, Directive0, Directive1, Route}
 import akka.http.scaladsl.unmarshalling.FromRequestUnmarshaller
 import akka.stream.ActorMaterializer
 import cn.o2o.wonhigh.data.process.platform.job.Job
-import spray.json._
 import cn.o2o.wonhigh.data.process.platform.job.JobJsonSupport._
+import cn.o2o.wonhigh.data.process.platform.job.exception.JobException
+import spray.json._
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 
@@ -21,34 +23,46 @@ class WebServer(val host: String, val port: Int, val ctx: PlatformContext = null
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
+  val userRoute: Route = path("user" / "login") {
+    WebServer.postWithTryCatch(as[Map[String, String]]) { param =>
+      complete(HttpEntity(ContentTypes.`application/json`, "{\"code\":20000,\"data\":{\"token\":\"admin-token\"}}"))
+    }
+  } ~ path("user" / "login") {
+    WebServer.optionsWithTryCatch(as[Map[String, String]]) { param =>
+      complete(HttpEntity(ContentTypes.`application/json`, "{\"code\":20000,\"data\":{\"token\":\"admin-token\"}}"))
+    }
+  }
+
   val jobsRoute: Route = path("jobs") {
-    get {
-      val result = ctx.getJobManager.listJobs().toJson.toString()
-      complete(HttpEntity(ContentTypes.`application/json`,result))
+    WebServer.getWithTryCatch {
+      val result = ctx.getJobManager.listJobs().toJson
+      WebServer.completeOkWithJson(result)
     }
   } ~ path("jobs") {
-    post {
-      entity(as[Job]) { job =>
-//        val job = new Gson().fromJson(jobStr, classOf[Job])
-        ctx.getJobManager.createJob(job)
-        WebServer.completeOk
-      }
+    WebServer.postWithTryCatch(as[Job]) { job =>
+      ctx.getJobManager.createJob(job)
+      WebServer.completeOk
+    }
+  } ~ path("jobs") {
+    WebServer.patchWithTryCatch(as[Job]) { job =>
+      ctx.getJobManager.updateJob(job)
+      WebServer.completeOk
     }
   } ~ path("jobs" / Segment) { jobID =>
-    get {
+    WebServer.getWithTryCatch {
       ctx.getJobManager.getJob(jobID) match {
-        case Some(job: Job) => complete(HttpEntity(ContentTypes.`application/json`, job.toJson.toString))
+        case Some(job: Job) => WebServer.completeOkWithJson(job.toJson)
         case None => WebServer.completeOk
       }
-    } ~
-      delete {
-        ctx.getJobManager.killJob(jobID)
-        complete(HttpEntity(ContentTypes.`application/json`, s"remove job: $jobID"))
-      }
+    }
+  } ~ path("instance" / Segment) { jobInstanceID =>
+    WebServer.getWithTryCatch {
+      WebServer.completeOkWithJson(ctx.getJobExecutor.getJobInstance(jobInstanceID).toJson)
+    }
   }
   val routes: Route =
     pathPrefix(WebServer.BASE_PATH) {
-      jobsRoute
+      userRoute ~ jobsRoute
     } ~ path("")(getFromResource("public/index.html"))
 
   var bindingFuture: Future[ServerBinding] = _
@@ -69,16 +83,75 @@ class WebServer(val host: String, val port: Int, val ctx: PlatformContext = null
 object WebServer {
   val BASE_PATH = "v1"
 
-  def completeOk: Route = complete(HttpEntity.Empty)
+  def completeOk: Route = complete(HttpEntity(ContentTypes.`application/json`, """{"code":20000}"""))
+
+  def completeOk(result: String, charset: WithFixedCharset = ContentTypes.`application/json`): Route = {complete(HttpEntity(charset, s"""{"code":20000,"data":"$result"}"""))}
+
+  def completeOkWithJson(result: JsValue, charset: WithFixedCharset = ContentTypes.`application/json`): Route = {complete(HttpEntity(charset, s"""{"code":20000,"data":${result.toString()}}"""))}
+
+  def completeException(errMsg: String): Route = complete(HttpEntity(ContentTypes.`application/json`, "{\"code\":50000,\"message\":\"" + errMsg + "\"}"))
 
   def postEntity[T](um: FromRequestUnmarshaller[T]): Directive1[T] = post & entity(um)
 
-  def main(args: Array[String]): Unit = {
-//    val job: Job = "{\"jobName\":\"1\",\"jobId\":\"2\",\"sql\":\"3\"}"
-//    print(job.jobId)
-    //    val server = new WebServer("localhost", 8080)
-    //    server.start()
-    //    println(new Gson().toJson(List[Job](new Job("1", "2", "3"))).toString())
+  def optionsEntity[T](um: FromRequestUnmarshaller[T]): Directive1[T] = options & entity(um)
+
+  def patchEntity[T](um: FromRequestUnmarshaller[T]): Directive1[T] = patch & entity(um)
+
+  def completeWithTryCatch0(block: => Route): Route = {
+    try {
+      block
+    } catch {
+      case JobException(msg) => WebServer.completeException(msg)
+    }
   }
 
+  def completeWithTryCatch1[T](block: T => Route, param: T): Route = {
+    try {
+      block(param)
+    } catch {
+      case JobException(msg) => WebServer.completeException(msg)
+    }
+  }
+
+  def getWithTryCatch(block: => Route): Route = get(completeWithTryCatch0(block))
+
+  def postWithTryCatch[T](um: FromRequestUnmarshaller[T])(block: T => Route): Route = postEntity[T](um: FromRequestUnmarshaller[T]) { param =>
+    completeWithTryCatch1(block, param)
+  }
+
+  def optionsWithTryCatch[T](um: FromRequestUnmarshaller[T])(block: T => Route): Route = optionsEntity[T](um: FromRequestUnmarshaller[T]) { param =>
+    completeWithTryCatch1(block, param)
+  }
+
+  def patchWithTryCatch[T](um: FromRequestUnmarshaller[T])(block: T => Route): Route = patchEntity[T](um: FromRequestUnmarshaller[T]) { param =>
+    completeWithTryCatch1(block, param)
+  }
+
+  def ggg[T](f: (T ⇒ String) ⇒ String): Unit = print(f)
+
+  def main(args: Array[String]): Unit = {
+    //    print(ggg{ WebServer.completeException(msg)})
+    val d: Directive0 = Directive.Empty
+    //    implicit val ev:String = ""
+    //    d{WebServer.completeException("")}
+    //    d.apply{WebServer.completeException("")}
+    val t = new Test
+    try {
+      t.tapply()
+    } catch {
+      case JobException(msg) => print(msg)
+    }
+
+    //    println(get)
+    //    println(get{WebServer.completeException("")})
+    println()
+  }
+
+}
+
+class Test {
+  def tapply(): String = {
+    throw new JobException("123123213123")
+    ""
+  }
 }
